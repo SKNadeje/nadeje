@@ -34,6 +34,7 @@ export default function Turnaj() {
   const [tipy, setTipy] = useState<Record<string, { domaci: string; hoste: string; strelec: string }>>({});
   const [ulozeno, setUlozeno] = useState<Record<string, boolean>>({});
   const [chyba, setChyba] = useState<Record<string, string>>({});
+  const [verejneTipy, setVerejneTipy] = useState<Record<string, any[]>>({});
   const [modalZapas, setModalZapas] = useState<Zapas | null>(null);
   const [vybranyTym, setVybranyTym] = useState<'domaci' | 'hoste' | null>(null);
   const [search, setSearch] = useState('');
@@ -54,7 +55,7 @@ export default function Turnaj() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user && zapasyData && zapasyData.length > 0) {
-      const zapasIds = zapasyData.map(z => z.id);
+      const zapasIds = zapasyData.map((z: Zapas) => z.id);
       const { data: tipyData } = await supabase
         .from('tipy_nadeje')
         .select('*')
@@ -64,7 +65,7 @@ export default function Turnaj() {
       if (tipyData && tipyData.length > 0) {
         const tipyMap: Record<string, { domaci: string; hoste: string; strelec: string }> = {};
         const ulozenoMap: Record<string, boolean> = {};
-        tipyData.forEach(t => {
+        tipyData.forEach((t: any) => {
           tipyMap[t.zapas_id] = {
             domaci: t.tip_domaci?.toString() || '',
             hoste: t.tip_hoste?.toString() || '',
@@ -76,6 +77,18 @@ export default function Turnaj() {
         setUlozeno(ulozenoMap);
       }
     }
+
+    if (zapasyData && zapasyData.length > 0) {
+      const hotoveZapasy = zapasyData.filter((z: Zapas) => new Date() >= new Date(z.datum));
+      for (const z of hotoveZapasy) {
+        const { data: vt } = await supabase
+          .from('tipy_nadeje')
+          .select('*, profiles(nickname)')
+          .eq('zapas_id', z.id);
+        if (vt) setVerejneTipy(prev => ({ ...prev, [z.id]: vt }));
+      }
+    }
+
     setLoading(false);
   }
 
@@ -238,6 +251,20 @@ export default function Turnaj() {
               {zacal && !maTip && !maVysledek && (
                 <Text style={s.chyba}>Zápas již začal — tip nelze zadat.</Text>
               )}
+
+              {zacal && verejneTipy[z.id] && verejneTipy[z.id].length > 0 && (
+                <View style={s.verejneTipy}>
+                  <Text style={s.verejneTipyTitle}>TIPY PARTY</Text>
+                  {verejneTipy[z.id].map((t: any) => (
+                    <View key={t.id} style={[s.tipRadek, t.body_ziskane > 0 && s.tipRadekVyhra]}>
+                      <Text style={s.tipNick}>{t.profiles?.nickname || '???'}</Text>
+                      <Text style={s.tipSkore}>{t.tip_domaci}:{t.tip_hoste}</Text>
+                      <Text style={s.tipStrelec}>{t.tip_strelec}</Text>
+                      {t.body_ziskane > 0 && <Text style={s.tipBody}>+{t.body_ziskane}b</Text>}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           );
         })}
@@ -342,6 +369,14 @@ const s = StyleSheet.create({
   btnText: { color: '#080C1A', fontSize: 14, fontWeight: '800', letterSpacing: 2 },
   tipUzamcen: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12, marginTop: 4 },
   tipUzamcenText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center' },
+  verejneTipy: { marginTop: 16, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12 },
+  verejneTipyTitle: { color: '#B8972A', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
+  tipRadek: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', gap: 8 },
+  tipRadekVyhra: { backgroundColor: 'rgba(42,122,58,0.2)', borderRadius: 8, paddingHorizontal: 6 },
+  tipNick: { color: '#F0C040', fontSize: 13, fontWeight: '700', flex: 1 },
+  tipSkore: { color: '#fff', fontSize: 13, fontWeight: '900', width: 40, textAlign: 'center' },
+  tipStrelec: { color: 'rgba(255,255,255,0.5)', fontSize: 12, flex: 1 },
+  tipBody: { color: '#4CAF50', fontSize: 13, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: '#0F1A2E', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
   modalTitle: { color: '#F0C040', fontSize: 16, fontWeight: '900', letterSpacing: 2, marginBottom: 16, textAlign: 'center' },
