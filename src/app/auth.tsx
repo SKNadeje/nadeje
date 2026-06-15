@@ -1,9 +1,11 @@
 import { SafeAreaView, View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useState } from 'react';
 import { StatusBar } from 'react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 export default function Auth() {
+  const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [nickname, setNickname] = useState('');
@@ -27,11 +29,7 @@ export default function Auth() {
       email,
       password,
       options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          nickname: nickname,
-        },
+        data: { first_name: firstName, last_name: lastName, nickname },
       },
     });
     setLoading(false);
@@ -46,9 +44,15 @@ export default function Auth() {
       return;
     }
     setLoading(true);
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (err) setError(err.message);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    if (data.session) {
+      router.replace('/home');
+    }
   }
 
   if (success) {
@@ -71,10 +75,8 @@ export default function Auth() {
       <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-
           <Text style={s.eyebrow}>SK NADĚJE</Text>
           <Text style={s.title}>{isLogin ? 'PŘIHLÁŠENÍ' : 'REGISTRACE'}</Text>
-
           <View style={s.form}>
             {!isLogin && (
               <>
@@ -94,7 +96,6 @@ export default function Auth() {
                 </View>
               </>
             )}
-
             <View style={s.field}>
               <Text style={s.label}>E-MAIL</Text>
               <TextInput style={s.input} placeholder="jan@example.com" placeholderTextColor="rgba(255,255,255,0.25)" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
@@ -103,13 +104,10 @@ export default function Auth() {
               <Text style={s.label}>HESLO</Text>
               <TextInput style={s.input} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.25)" value={password} onChangeText={setPassword} secureTextEntry />
             </View>
-
             {error && <Text style={s.error}>{error}</Text>}
-
             <Pressable style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]} onPress={isLogin ? handleLogin : handleRegister} disabled={loading}>
               <Text style={s.ctaText}>{loading ? 'Chvíli strpení…' : isLogin ? 'PŘIHLÁSIT SE' : 'ZAREGISTROVAT SE'}</Text>
             </Pressable>
-
             <Pressable style={s.toggle} onPress={() => setMode(isLogin ? 'register' : 'login')}>
               <Text style={s.toggleText}>
                 {isLogin ? 'Nemám účet — ' : 'Už mám účet — '}
@@ -117,7 +115,6 @@ export default function Auth() {
               </Text>
             </Pressable>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -133,26 +130,9 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   field: { gap: 6 },
   label: { color: '#B8972A', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(184,151,42,0.35)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#F0C040',
-    fontSize: 15,
-  },
+  input: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(184,151,42,0.35)', paddingHorizontal: 16, paddingVertical: 14, color: '#F0C040', fontSize: 15 },
   error: { color: '#FF6B6B', fontSize: 13, textAlign: 'center' },
-  cta: {
-    backgroundColor: '#B8972A',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#F0C040',
-  },
+  cta: { backgroundColor: '#B8972A', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: '#F0C040' },
   ctaText: { color: '#080C1A', fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   toggle: { paddingVertical: 12, alignItems: 'center' },
   toggleText: { color: 'rgba(255,255,255,0.4)', fontSize: 14 },
