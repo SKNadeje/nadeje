@@ -100,7 +100,7 @@ export default function Turnaj() {
       return;
     }
 
-const { error } = await supabase.from('tipy_nadeje').upsert({
+    const { error } = await supabase.from('tipy_nadeje').upsert({
       zapas_id: z.id,
       user_id: user.id,
       tip_domaci: parseInt(tip.domaci),
