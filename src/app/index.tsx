@@ -16,7 +16,7 @@ import { colors } from '../theme/colors';
 import { supabase } from '../lib/supabase';
 
 // Logo: nastav na require('../assets/logo.png') jakmile ho nahraješ
-const LOGO = null;
+const LOGO = require("../../assets/images/logo.png");
 
 export default function Welcome() {
   const [name, setName] = useState('');
