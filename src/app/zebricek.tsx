@@ -62,8 +62,7 @@ export default function Zebricek() {
       zapasyT.sort((a, b) => new Date(a.datum).getTime() - new Date(b.datum).getTime());
       let carry = 0;
       zapasyT.forEach((m: any) => {
-        const pot = m.tips.length * Math.max(0, m.cena - FOND) + carry;
-        const strelciList = m.strelci.toLowerCase().split(',').map((x: string) => x.trim()).filter(Boolean);
+const pot = m.tips.length * 20 + carry;        const strelciList = m.strelci.toLowerCase().split(',').map((x: string) => x.trim()).filter(Boolean);
         const presny = m.tips.filter((t: any) => t.tipD === m.vd && t.tipH === m.vh);
         const seStrelcem = presny.filter((t: any) => {
           const p = (t.strelec || '').toLowerCase().trim();

@@ -7,8 +7,7 @@ import { SOUPISKY } from '../../lib/soupisky';
 import { supabase } from '../../lib/supabase';
 import { getObrazek } from '../../lib/tymy';
 
-type Zapas = { id: string; domaci: string; hoste: string; datum: string; stav: string; vysledek_domaci: number | null; vysledek_hoste: number | null; cena_tip?: number };
-
+type Zapas = { id: string; domaci: string; hoste: string; datum: string; stav: string; vysledek_domaci: number | null; vysledek_hoste: number | null; cena_tip?: number; pocet_tipu?: number };
 const TURNAJ_MAP: Record<string, string> = {
   'ms-hokej': 'MS Hokej', 'ms-fotbal': 'MS Fotbal', 'me-fotbal': 'ME Fotbal',
   'zimni-olympiada': 'Zimní Olympiáda', 'letni-olympiada': 'Letní Olympiáda',
@@ -116,9 +115,9 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
                     <Text style={s.tileVs}>vs</Text>
                     {getObrazek(z.hoste) ? <Image source={{ uri: getObrazek(z.hoste)! }} style={s.tileVlajka} resizeMode="contain" /> : <View style={s.tileVlajkaPh} />}
                   </View>
-                  <Text style={s.tileTymy} numberOfLines={2}>{z.domaci} – {z.hoste}</Text>
-                </Pressable>
-              );
+<Text style={s.tileTymy} numberOfLines={2}>{z.domaci} – {z.hoste}</Text>
+                  {!r && <Text style={s.tileBank}>BANK {(z.pocet_tipu || 0) * 20} Kč</Text>}
+                </Pressable>              );
             })}
           </View>
         </ScrollView>
@@ -130,7 +129,8 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
               {det && (
                 <ScrollView showsVerticalScrollIndicator={false}>
                   {detResult && <View style={s.vysledekBadgeC}><Text style={s.vysledekText}>{det.vysledek_domaci} : {det.vysledek_hoste}</Text></View>}
-                  <Text style={s.datumC}>{fmt(det.datum)}</Text>
+<Text style={s.datumC}>{fmt(det.datum)}</Text>
+                  {!detResult && <Text style={s.detBank}>💰 BANK ZÁPASU: {(det.pocet_tipu || 0) * 20} Kč</Text>}                  
                   <View style={s.zapasRow}>
                     <View style={s.tym}>{getObrazek(det.domaci) ? <Image source={{ uri: getObrazek(det.domaci)! }} style={s.vlajka} resizeMode="contain" /> : <View style={s.vlajkaPh} />}<Text style={s.tymNazev}>{det.domaci}</Text></View>
                     <View style={s.vsKruh}><Text style={s.vsText}>VS</Text></View>
@@ -290,4 +290,7 @@ modalClose: { marginTop: 16, paddingVertical: 14, alignItems: 'center', borderWi
   badge: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   badgeOn: { backgroundColor: 'rgba(29,158,117,0.25)', borderColor: '#5DCAA5' },
   badgeOff: { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' },
-  badgeOffText: { opacity: 0.25 },});
+badgeOffText: { opacity: 0.25 },
+  tileBank: { color: '#5DCAA5', fontSize: 11, fontWeight: '800', marginTop: 2 },
+  detBank: { color: '#5DCAA5', fontSize: 13, fontWeight: '800', textAlign: 'center', marginBottom: 14 },
+});
