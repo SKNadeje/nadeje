@@ -7,22 +7,16 @@ import { SOUPISKY } from '../../lib/soupisky';
 import { supabase } from '../../lib/supabase';
 import { getObrazek } from '../../lib/tymy';
 
-type Zapas = { id: string; domaci: string; hoste: string; datum: string; stav: string; vysledek_domaci: number | null; vysledek_hoste: number | null; cena_tip?: number; pocet_tipu?: number };
+type Zapas = { id: string; domaci: string; hoste: string; datum: string; stav: string; vysledek_domaci: number | null; vysledek_hoste: number | null; cena_tip?: number; pocet_tipu?: number; strelci?: string };
+
 const TURNAJ_MAP: Record<string, string> = {
   'ms-hokej': 'MS Hokej', 'ms-fotbal': 'MS Fotbal', 'me-fotbal': 'ME Fotbal',
   'zimni-olympiada': 'Zimní Olympiáda', 'letni-olympiada': 'Letní Olympiáda',
   'extraliga': 'Tipsport Extraliga', 'chance-liga': 'Chance Liga', 'champions-league': 'Champions League',
 };
 
-function rozlozBody(body: number) {
-  return {
-    skore: body >= 6,
-    strelec: body === 3 || body === 4 || body === 9,
-    trend: body === 1 || body === 4 || body === 6 || body === 9,
-  };
-}
-
-export default function Turnaj() {  const { id } = useLocalSearchParams();
+export default function Turnaj() {
+  const { id } = useLocalSearchParams();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [zapasy, setZapasy] = useState<Zapas[]>([]);
@@ -77,7 +71,7 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
     if (new Date() >= new Date(z.datum)) { setChyba(p => ({ ...p, [z.id]: 'Zápas už začal.' })); return; }
     const { error } = await supabase.from('tipy_nadeje').upsert({ zapas_id: z.id, user_id: user.id, tip_domaci: parseInt(tip.domaci), tip_hoste: parseInt(tip.hoste), tip_strelec: tip.strelec }, { onConflict: 'zapas_id,user_id' });
     if (error) setChyba(p => ({ ...p, [z.id]: error.message }));
-    else { setUlozeno(p => ({ ...p, [z.id]: true })); setPlatba((z as any).cena_tip ?? 20); }
+    else { setUlozeno(p => ({ ...p, [z.id]: true })); setPlatba((z as any).cena_tip ?? 25); }
   }
 
   const fmt = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' }) + ' · ' + d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }); };
@@ -85,7 +79,7 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
   const hraci = strelecModal && vybranyTym ? (SOUPISKY[strelecModal[vybranyTym]] || []).filter(h => h.toLowerCase().includes(search.toLowerCase())) : [];
 
   const det = detail ? zapasy.find(z => z.id === detail.id) || detail : null;
-  const detResult = det && det.vysledek_domaci !== null && det.vysledek_hoste !== null;
+  const detResult = det ? (det.vysledek_domaci !== null && det.vysledek_hoste !== null) : false;
   const detZacal = det ? zacal(det.datum) : false;
   const detTip = det ? ulozeno[det.id] : false;
 
@@ -115,9 +109,10 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
                     <Text style={s.tileVs}>vs</Text>
                     {getObrazek(z.hoste) ? <Image source={{ uri: getObrazek(z.hoste)! }} style={s.tileVlajka} resizeMode="contain" /> : <View style={s.tileVlajkaPh} />}
                   </View>
-<Text style={s.tileTymy} numberOfLines={2}>{z.domaci} – {z.hoste}</Text>
+                  <Text style={s.tileTymy} numberOfLines={2}>{z.domaci} – {z.hoste}</Text>
                   {!r && <Text style={s.tileBank}>BANK {(z.pocet_tipu || 0) * 20} Kč</Text>}
-                </Pressable>              );
+                </Pressable>
+              );
             })}
           </View>
         </ScrollView>
@@ -129,8 +124,8 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
               {det && (
                 <ScrollView showsVerticalScrollIndicator={false}>
                   {detResult && <View style={s.vysledekBadgeC}><Text style={s.vysledekText}>{det.vysledek_domaci} : {det.vysledek_hoste}</Text></View>}
-<Text style={s.datumC}>{fmt(det.datum)}</Text>
-                  {!detResult && <Text style={s.detBank}>💰 BANK ZÁPASU: {(det.pocet_tipu || 0) * 20} Kč</Text>}                  
+                  <Text style={s.datumC}>{fmt(det.datum)}</Text>
+                  {!detResult && <Text style={s.detBank}>💰 BANK ZÁPASU: {(det.pocet_tipu || 0) * 20} Kč</Text>}
                   <View style={s.zapasRow}>
                     <View style={s.tym}>{getObrazek(det.domaci) ? <Image source={{ uri: getObrazek(det.domaci)! }} style={s.vlajka} resizeMode="contain" /> : <View style={s.vlajkaPh} />}<Text style={s.tymNazev}>{det.domaci}</Text></View>
                     <View style={s.vsKruh}><Text style={s.vsText}>VS</Text></View>
@@ -151,41 +146,46 @@ export default function Turnaj() {  const { id } = useLocalSearchParams();
                         <Pressable style={s.strelecBtn} onPress={() => { setStrelecModal(det); setVybranyTym(null); setSearch(''); }}><Text style={s.placeholder}>Vyber střelce...</Text><Text style={s.arrow}>▼</Text></Pressable>
                       )}
                       {chyba[det.id] ? <Text style={s.chyba}>{chyba[det.id]}</Text> : null}
-                      <Pressable style={({ pressed }) => [s.btn, detTip && s.btnUlozeno, pressed && { opacity: 0.85 }]} onPress={() => odeslat(det)}><Text style={s.btnText}>{detTip ? '✓ ULOŽENO — ZMĚNIT' : 'ULOŽIT TIP'}</Text></Pressable>
+                      <Pressable style={({ pressed }) => [s.btn, detTip && s.btnUlozeno, pressed && { opacity: 0.85 }]} onPress={() => odeslat(det)}><Text style={s.btnText}>{detTip ? '✓ ULOŽENO — ZMĚNIT' : 'ULOŽIT TIP (25 Kč)'}</Text></Pressable>
                     </>
                   )}
 
                   {detZacal && detTip && !detResult && <View style={s.tipUzamcen}><Text style={s.tipUzamcenText}>Tvůj tip: {tipy[det.id]?.domaci}:{tipy[det.id]?.hoste} · {tipy[det.id]?.strelec}</Text></View>}
                   {detZacal && !detTip && !detResult && <Text style={s.chyba}>Zápas už začal — tip nelze zadat.</Text>}
 
-                  {(detZacal || detResult) && verejneTipy[det.id] && verejneTipy[det.id].length > 0 && (
-                    <View style={s.verejneTipy}>
-                      <View style={s.vtHead}><Text style={s.vtTitle}>TIPY PARTY</Text><View style={s.vtLine} /></View>
-                     {verejneTipy[det.id].map((t: any, i: number) => {
-                        const h = rozlozBody(t.body_ziskane || 0);
-                        return (
-                          <View key={t.id} style={[s.tipCard, t.body_ziskane > 0 && s.tipCardVyhra]}>
-                            <View style={s.tipCardTop}>
-                              <Text style={[s.tipRank, t.body_ziskane > 0 && s.tipRankVyhra]}>{i + 1}</Text>
-                              <Text style={s.tipNick}>{t.profiles?.nickname || '???'}</Text>
-                              <Text style={[s.tipBody, t.body_ziskane === 0 && s.tipBodyNula]}>{t.body_ziskane > 0 ? '+' + t.body_ziskane : '0'}</Text>
+                  {(detZacal || detResult) && verejneTipy[det.id] && verejneTipy[det.id].length > 0 && (() => {
+                    const tipyP = verejneTipy[det.id];
+                    const strelciList = (det.strelci || '').toLowerCase().split(',').map((x: string) => x.trim()).filter(Boolean);
+                    const scorerHit = (t: any) => { const p = (t.tip_strelec || '').toLowerCase().trim(); return p.length > 0 && strelciList.some((rr: string) => rr.includes(p) || p.includes(rr)); };
+                    const exact = detResult ? tipyP.filter((t: any) => t.tip_domaci === det.vysledek_domaci && t.tip_hoste === det.vysledek_hoste) : [];
+                    const winB = exact.filter(scorerHit);
+                    const winners = winB.length > 0 ? winB : exact;
+                    const bank = (det.pocet_tipu || 0) * 20;
+                    const share = winners.length > 0 ? Math.floor(bank / winners.length) : 0;
+                    const winnerIds = new Set(winners.map((w: any) => w.id));
+                    return (
+                      <View style={s.verejneTipy}>
+                        <View style={s.vtHead}><Text style={s.vtTitle}>TIPY PARTY</Text><View style={s.vtLine} /></View>
+                        {tipyP.map((t: any) => {
+                          const exactHit = detResult && t.tip_domaci === det.vysledek_domaci && t.tip_hoste === det.vysledek_hoste;
+                          const win = winnerIds.has(t.id);
+                          const sHit = detResult && scorerHit(t);
+                          return (
+                            <View key={t.id} style={[s.betRow, win && s.betWin, !win && exactHit && s.betScore, detResult && !win && !exactHit && s.betLoss]}>
+                              <View style={s.betTop}>
+                                <Text style={s.betStav} numberOfLines={1}>
+                                  {!detResult ? '⏳ ' : win ? `🏆 ${share} Kč  ` : exactHit ? '✅ skóre  ' : '❌  '}
+                                  <Text style={[s.betName, win && s.betNameWin]}>{t.profiles?.nickname || '???'}</Text>
+                                </Text>
+                                <Text style={s.betScoreVal}>{t.tip_domaci}:{t.tip_hoste}</Text>
+                              </View>
+                              <Text style={s.betMeta}>🎯 {t.tip_strelec || '—'} {sHit ? <Text style={s.betTrefil}>(TREFIL!)</Text> : null}</Text>
                             </View>
-                            <View style={s.tipCardBottom}>
-                              <View style={s.skoreChip}><Text style={s.skoreChipText}>{t.tip_domaci}:{t.tip_hoste}</Text></View>
-                              <Text style={s.tipStrelec2} numberOfLines={1}>⚡ {t.tip_strelec || '—'}</Text>
-                              {detResult && (
-                                <View style={s.badges}>
-                                  <View style={[s.badge, h.skore ? s.badgeOn : s.badgeOff]}><Text style={h.skore ? undefined : s.badgeOffText}>🥅</Text></View>
-                                  <View style={[s.badge, h.strelec ? s.badgeOn : s.badgeOff]}><Text style={h.strelec ? undefined : s.badgeOffText}>🎯</Text></View>
-                                  <View style={[s.badge, h.trend ? s.badgeOn : s.badgeOff]}><Text style={h.trend ? undefined : s.badgeOffText}>📈</Text></View>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
+                          );
+                        })}
+                      </View>
+                    );
+                  })()}
                 </ScrollView>
               )}
             </View>
@@ -240,13 +240,15 @@ const s = StyleSheet.create({
   tileVlajkaPh: { width: 38, height: 26, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.1)' },
   tileVs: { color: CYAN, fontSize: 11, fontWeight: '900' },
   tileTymy: { color: GOLD, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  tileBank: { color: '#5DCAA5', fontSize: 11, fontWeight: '800', marginTop: 2 },
   detailOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 18 },
   detailBox: { backgroundColor: PANEL, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(240,192,64,0.25)', padding: 22, maxHeight: '85%' },
   detailClose: { position: 'absolute', top: 12, right: 14, zIndex: 5, padding: 6 },
   detailCloseText: { color: MUTED, fontSize: 20, fontWeight: '700' },
   vysledekBadgeC: { alignSelf: 'center', backgroundColor: '#1D9E75', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 5, marginBottom: 6 },
   vysledekText: { color: '#04342C', fontSize: 13, fontWeight: '900' },
-  datumC: { color: MUTED, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 16, textAlign: 'center', marginTop: 8 },
+  datumC: { color: MUTED, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10, textAlign: 'center', marginTop: 8 },
+  detBank: { color: '#5DCAA5', fontSize: 13, fontWeight: '800', textAlign: 'center', marginBottom: 14 },
   zapasRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   tym: { flex: 1, alignItems: 'center', gap: 10 },
   vlajka: { width: 72, height: 48, borderRadius: 8 }, vlajkaPh: { width: 72, height: 48, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)' },
@@ -265,14 +267,19 @@ const s = StyleSheet.create({
   btn: { backgroundColor: GOLD, borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#FFE08A' },
   btnUlozeno: { backgroundColor: '#1D9E75', borderColor: '#5DCAA5' }, btnText: { color: '#080C1A', fontSize: 14, fontWeight: '800', letterSpacing: 2 },
   tipUzamcen: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12, marginTop: 4 }, tipUzamcenText: { color: 'rgba(255,255,255,0.55)', fontSize: 13, textAlign: 'center' },
-  verejneTipy: { marginTop: 16, backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: 'rgba(240,192,64,0.1)' },
+  verejneTipy: { marginTop: 16 },
   vtHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }, vtTitle: { color: GOLD, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 }, vtLine: { flex: 1, height: 1, backgroundColor: 'rgba(240,192,64,0.15)' },
-  tipRadek: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 10, gap: 8, marginBottom: 4 },
-  tipRadekVyhra: { backgroundColor: 'rgba(29,158,117,0.16)', borderWidth: 1, borderColor: 'rgba(53,208,224,0.25)' },
-  tipRank: { color: MUTED, fontSize: 13, fontWeight: '800', width: 16 }, tipRankVyhra: { color: CYAN },
-  tipNick: { color: CREAM, fontSize: 14, fontWeight: '700', flex: 1 },
-  skoreChip: { backgroundColor: '#0A1830', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 }, skoreChipText: { color: GOLD, fontSize: 12, fontWeight: '800' },
-  tipStrelec: { color: MUTED, fontSize: 11, width: 60, textAlign: 'right' }, tipBody: { color: '#5DCAA5', fontSize: 13, fontWeight: '800', width: 30, textAlign: 'right' }, tipBodyNula: { color: '#6B7488' },
+  betRow: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 11, marginBottom: 7, borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.12)' },
+  betWin: { backgroundColor: 'rgba(29,158,117,0.16)', borderLeftColor: '#5DCAA5' },
+  betScore: { borderLeftColor: '#5DCAA5' },
+  betLoss: { borderLeftColor: '#7A1A1A' },
+  betTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  betStav: { color: CREAM, fontSize: 14, fontWeight: '700', flex: 1 },
+  betName: { color: CREAM, fontSize: 14, fontWeight: '800' },
+  betNameWin: { color: GOLD },
+  betScoreVal: { color: CYAN, fontSize: 14, fontWeight: '900', marginLeft: 8 },
+  betMeta: { color: MUTED, fontSize: 12 },
+  betTrefil: { color: CYAN, fontSize: 12, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: '#0F1A2E', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
   modalTitle: { color: GOLD, fontSize: 16, fontWeight: '900', letterSpacing: 2, marginBottom: 16, textAlign: 'center' },
@@ -280,17 +287,5 @@ const s = StyleSheet.create({
   modalVlajka: { width: 64, height: 42, borderRadius: 6 }, tymVyberText: { color: GOLD, fontSize: 14, fontWeight: '700', textAlign: 'center' },
   searchInput: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(240,192,64,0.35)', paddingHorizontal: 16, paddingVertical: 12, color: GOLD, fontSize: 15, marginBottom: 12 },
   modalItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }, modalItemText: { color: GOLD, fontSize: 15 },
-modalClose: { marginTop: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(240,192,64,0.3)', borderRadius: 12 }, modalCloseText: { color: GOLD_DIM, fontSize: 14, fontWeight: '700', letterSpacing: 2 },
-  tipCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  tipCardVyhra: { backgroundColor: 'rgba(29,158,117,0.14)', borderColor: 'rgba(53,208,224,0.3)' },
-  tipCardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  tipCardBottom: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tipStrelec2: { color: MUTED, fontSize: 12, flex: 1 },
-  badges: { flexDirection: 'row', gap: 5 },
-  badge: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  badgeOn: { backgroundColor: 'rgba(29,158,117,0.25)', borderColor: '#5DCAA5' },
-  badgeOff: { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' },
-badgeOffText: { opacity: 0.25 },
-  tileBank: { color: '#5DCAA5', fontSize: 11, fontWeight: '800', marginTop: 2 },
-  detBank: { color: '#5DCAA5', fontSize: 13, fontWeight: '800', textAlign: 'center', marginBottom: 14 },
+  modalClose: { marginTop: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(240,192,64,0.3)', borderRadius: 12 }, modalCloseText: { color: GOLD_DIM, fontSize: 14, fontWeight: '700', letterSpacing: 2 },
 });
