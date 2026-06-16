@@ -15,8 +15,15 @@ const TURNAJ_MAP: Record<string, string> = {
   'extraliga': 'Tipsport Extraliga', 'chance-liga': 'Chance Liga', 'champions-league': 'Champions League',
 };
 
-export default function Turnaj() {
-  const { id } = useLocalSearchParams();
+function rozlozBody(body: number) {
+  return {
+    skore: body >= 6,
+    strelec: body === 3 || body === 4 || body === 9,
+    trend: body === 1 || body === 4 || body === 6 || body === 9,
+  };
+}
+
+export default function Turnaj() {  const { id } = useLocalSearchParams();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [zapasy, setZapasy] = useState<Zapas[]>([]);
@@ -154,15 +161,29 @@ export default function Turnaj() {
                   {(detZacal || detResult) && verejneTipy[det.id] && verejneTipy[det.id].length > 0 && (
                     <View style={s.verejneTipy}>
                       <View style={s.vtHead}><Text style={s.vtTitle}>TIPY PARTY</Text><View style={s.vtLine} /></View>
-                      {verejneTipy[det.id].map((t: any, i: number) => (
-                        <View key={t.id} style={[s.tipRadek, t.body_ziskane > 0 && s.tipRadekVyhra]}>
-                          <Text style={[s.tipRank, t.body_ziskane > 0 && s.tipRankVyhra]}>{i + 1}</Text>
-                          <Text style={s.tipNick}>{t.profiles?.nickname || '???'}</Text>
-                          <View style={s.skoreChip}><Text style={s.skoreChipText}>{t.tip_domaci}:{t.tip_hoste}</Text></View>
-                          <Text style={s.tipStrelec} numberOfLines={1}>{t.tip_strelec}</Text>
-                          <Text style={[s.tipBody, t.body_ziskane === 0 && s.tipBodyNula]}>{t.body_ziskane > 0 ? '+' + t.body_ziskane : '0'}</Text>
-                        </View>
-                      ))}
+                     {verejneTipy[det.id].map((t: any, i: number) => {
+                        const h = rozlozBody(t.body_ziskane || 0);
+                        return (
+                          <View key={t.id} style={[s.tipCard, t.body_ziskane > 0 && s.tipCardVyhra]}>
+                            <View style={s.tipCardTop}>
+                              <Text style={[s.tipRank, t.body_ziskane > 0 && s.tipRankVyhra]}>{i + 1}</Text>
+                              <Text style={s.tipNick}>{t.profiles?.nickname || '???'}</Text>
+                              <Text style={[s.tipBody, t.body_ziskane === 0 && s.tipBodyNula]}>{t.body_ziskane > 0 ? '+' + t.body_ziskane : '0'}</Text>
+                            </View>
+                            <View style={s.tipCardBottom}>
+                              <View style={s.skoreChip}><Text style={s.skoreChipText}>{t.tip_domaci}:{t.tip_hoste}</Text></View>
+                              <Text style={s.tipStrelec2} numberOfLines={1}>⚡ {t.tip_strelec || '—'}</Text>
+                              {detResult && (
+                                <View style={s.badges}>
+                                  <View style={[s.badge, h.skore ? s.badgeOn : s.badgeOff]}><Text style={h.skore ? undefined : s.badgeOffText}>🥅</Text></View>
+                                  <View style={[s.badge, h.strelec ? s.badgeOn : s.badgeOff]}><Text style={h.strelec ? undefined : s.badgeOffText}>🎯</Text></View>
+                                  <View style={[s.badge, h.trend ? s.badgeOn : s.badgeOff]}><Text style={h.trend ? undefined : s.badgeOffText}>📈</Text></View>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </ScrollView>
@@ -259,5 +280,14 @@ const s = StyleSheet.create({
   modalVlajka: { width: 64, height: 42, borderRadius: 6 }, tymVyberText: { color: GOLD, fontSize: 14, fontWeight: '700', textAlign: 'center' },
   searchInput: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(240,192,64,0.35)', paddingHorizontal: 16, paddingVertical: 12, color: GOLD, fontSize: 15, marginBottom: 12 },
   modalItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }, modalItemText: { color: GOLD, fontSize: 15 },
-  modalClose: { marginTop: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(240,192,64,0.3)', borderRadius: 12 }, modalCloseText: { color: GOLD_DIM, fontSize: 14, fontWeight: '700', letterSpacing: 2 },
-});
+modalClose: { marginTop: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(240,192,64,0.3)', borderRadius: 12 }, modalCloseText: { color: GOLD_DIM, fontSize: 14, fontWeight: '700', letterSpacing: 2 },
+  tipCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  tipCardVyhra: { backgroundColor: 'rgba(29,158,117,0.14)', borderColor: 'rgba(53,208,224,0.3)' },
+  tipCardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  tipCardBottom: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tipStrelec2: { color: MUTED, fontSize: 12, flex: 1 },
+  badges: { flexDirection: 'row', gap: 5 },
+  badge: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  badgeOn: { backgroundColor: 'rgba(29,158,117,0.25)', borderColor: '#5DCAA5' },
+  badgeOff: { backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' },
+  badgeOffText: { opacity: 0.25 },});
