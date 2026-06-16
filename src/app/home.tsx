@@ -39,8 +39,7 @@ export default function Home() {
                 s.tile,
                 { width: tileSize, height: tileSize * 0.9, opacity: pressed ? 0.75 : 1 },
               ]}
-              onPress={() => router.push('/turnaj/' + t.id)}
-            >
+onPress={() => router.push(t.id === 'statistiky' ? '/zebricek' : '/turnaj/' + t.id)}            >
               <Text style={s.tileEmoji}>{t.emoji}</Text>
               <Text style={s.tileName}>{t.name}</Text>
             </Pressable>
