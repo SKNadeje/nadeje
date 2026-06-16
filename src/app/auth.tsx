@@ -1,7 +1,6 @@
-import { SafeAreaView, View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useState } from 'react';
-import { StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export default function Auth() {
@@ -9,8 +8,7 @@ export default function Auth() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [nickname, setNickname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const [email, setEmail] = useState(typeof localStorage !== 'undefined' ? localStorage.getItem('posledni_email') || '' : '');  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -46,6 +44,7 @@ export default function Auth() {
     setLoading(true);
     const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('posledni_email', email);
     if (err) {
       setError(err.message);
       return;
@@ -98,11 +97,11 @@ export default function Auth() {
             )}
             <View style={s.field}>
               <Text style={s.label}>E-MAIL</Text>
-              <TextInput style={s.input} placeholder="jan@example.com" placeholderTextColor="rgba(255,255,255,0.25)" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+              <TextInput style={s.input} placeholder="jan@example.com" placeholderTextColor="rgba(255,255,255,0.25)" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" textContentType="emailAddress" autoComplete="email" />
             </View>
             <View style={s.field}>
               <Text style={s.label}>HESLO</Text>
-              <TextInput style={s.input} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.25)" value={password} onChangeText={setPassword} secureTextEntry />
+              <TextInput style={s.input} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.25)" value={password} onChangeText={setPassword} secureTextEntry textContentType="password" autoComplete="current-password" />
             </View>
             {error && <Text style={s.error}>{error}</Text>}
             <Pressable style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]} onPress={isLogin ? handleLogin : handleRegister} disabled={loading}>

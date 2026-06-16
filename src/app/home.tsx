@@ -1,6 +1,6 @@
-import { SafeAreaView, View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 const TOURNAMENTS = [
   { id: 'ms-hokej', emoji: '🏒', name: 'MS Hokej' },
@@ -49,6 +49,9 @@ export default function Home() {
         <Pressable style={s.adminBtn} onPress={() => router.push('/admin')}>
           <Text style={s.adminText}>⚙️  ADMIN</Text>
         </Pressable>
+        <Pressable style={s.odhlasitBtn} onPress={async () => { await supabase.auth.signOut(); router.replace('/'); }}>
+          <Text style={s.odhlasitText}>ODHLÁSIT SE</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -66,4 +69,6 @@ const s = StyleSheet.create({
   tileName: { color: '#F0C040', fontSize: 11, fontWeight: '700', textAlign: 'center', letterSpacing: 0.3 },
   adminBtn: { marginTop: 24, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(184,151,42,0.3)', borderRadius: 12 },
   adminText: { color: '#B8972A', fontSize: 13, fontWeight: '700', letterSpacing: 2 },
+  odhlasitBtn: { marginTop: 12, paddingVertical: 12, alignItems: 'center' },
+  odhlasitText: { color: 'rgba(255,107,74,0.8)', fontSize: 13, fontWeight: '700', letterSpacing: 2 },
 });

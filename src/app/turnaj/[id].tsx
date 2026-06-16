@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PlatbaModal } from '../../components/PlatbaModal';
 import { SOUPISKY } from '../../lib/soupisky';
 import { supabase } from '../../lib/supabase';
 import { getObrazek } from '../../lib/tymy';
@@ -39,6 +40,7 @@ export default function Turnaj() {
   const [modalZapas, setModalZapas] = useState<Zapas | null>(null);
   const [vybranyTym, setVybranyTym] = useState<'domaci' | 'hoste' | null>(null);
   const [search, setSearch] = useState('');
+  const [platba, setPlatba] = useState<number | null>(null);
 
   const turnajNazev = TURNAJ_MAP[id as string] || (id as string);
 
@@ -68,8 +70,7 @@ export default function Turnaj() {
     }
 
     if (zapasyData && zapasyData.length > 0) {
-      const hotoveZapasy = zapasyData.filter((z: Zapas) => new Date() >= new Date(z.datum));
-      for (const z of hotoveZapasy) {
+const hotoveZapasy = zapasyData.filter((z: Zapas) => new Date() >= new Date(z.datum) || z.vysledek_domaci !== null);      for (const z of hotoveZapasy) {
         const { data: vt } = await supabase
           .from('tipy_nadeje').select('*, profiles(nickname)').eq('zapas_id', z.id);
         if (vt) setVerejneTipy(prev => ({ ...prev, [z.id]: vt }));
@@ -91,8 +92,7 @@ export default function Turnaj() {
       tip_domaci: parseInt(tip.domaci), tip_hoste: parseInt(tip.hoste), tip_strelec: tip.strelec,
     }, { onConflict: 'zapas_id,user_id' });
     if (error) setChyba(prev => ({ ...prev, [z.id]: error.message }));
-    else setUlozeno(prev => ({ ...prev, [z.id]: true }));
-  }
+else { setUlozeno(prev => ({ ...prev, [z.id]: true })); setPlatba((z as any).cena_tip ?? 20); }  }
 
   const formatDatum = (iso: string) => {
     const d = new Date(iso);
@@ -181,8 +181,7 @@ export default function Turnaj() {
                 )}
                 {zacal && !maTip && !maVysledek && <Text style={s.chyba}>Zápas již začal — tip nelze zadat.</Text>}
 
-                {zacal && verejneTipy[z.id] && verejneTipy[z.id].length > 0 && (
-                  <View style={s.verejneTipy}>
+  {(zacal || maVysledek) && verejneTipy[z.id] && verejneTipy[z.id].length > 0 && (                  <View style={s.verejneTipy}>
                     <View style={s.vtHead}>
                       <Text style={s.vtTitle}>TIPY PARTY</Text>
                       <View style={s.vtLine} />
@@ -239,6 +238,7 @@ export default function Turnaj() {
             </View>
           </View>
         </Modal>
+        <PlatbaModal visible={platba !== null} castka={platba || 0} onClose={() => setPlatba(null)} />
       </SafeAreaView>
     </LinearGradient>
   );
